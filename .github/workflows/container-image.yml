@@ -1,0 +1,62 @@
+name: Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: oceannik/runner-base-image
+  IMAGE_TAG: latest
+  DEPLOYMENT_STRATEGIES_REPO: oceannik/deployment-strategies
+  BUILD_DEPENDENCIES_BIN_PATH: build-dependencies/bin
+  BUILD_DEPENDENCIES_SRC_PATH: build-dependencies/src
+  SMOKE_TEST_CMD: python -c 'print("OK")'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      FULL_IMAGE_NAME: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Run make install
+        run: make install
+
+      - name: Checkout code for deployment strategies as build dependencies
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.DEPLOYMENT_STRATEGIES_REPO }}
+          ref: main
+          path: ${{ env.BUILD_DEPENDENCIES_SRC_PATH }}
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+      - name: Build the container image
+        run: docker build -t ${{ env.FULL_IMAGE_NAME }} -f Containerfile .
+
+      - name: Perform a smoke test
+        run: docker run ${{ env.FULL_IMAGE_NAME }} ${{ env.SMOKE_TEST_CMD }}
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the image to registry ${{ env.REGISTRY }}
+        if: ${{ github.event_name != 'pull_request' }}
+        run: docker push ${{ env.FULL_IMAGE_NAME }}
