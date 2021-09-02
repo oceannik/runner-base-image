@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+set -ex
 
 MSG_PREFIX="[Oceannik Entrypoint]"
 

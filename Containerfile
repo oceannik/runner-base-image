@@ -1,4 +1,4 @@
-# Build a runner base image based on debian 10
+# Build a runner base image based on debian 11
 FROM debian:11.0-slim AS prebuild
 
 ENV ANSIBLE_CORE_PIP_VERSION=2.11.4
