@@ -27,11 +27,12 @@ RUN mkdir runner-scripts/ user-certs/ user-project/ user-scripts/
 COPY build-dependencies/ .
 COPY scripts/ runner-scripts/
 
-RUN ansible-galaxy collection install community.general
-# RUN ansible-galaxy collection install -r src/deployment-strategies/requirements.yml
+RUN ansible-galaxy install -r src/deployment-strategies/requirements.yml
 
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh bin/ocean
+
+WORKDIR ${OCEANNIK_DIR}/
 
 # Build a flattened image
 FROM scratch

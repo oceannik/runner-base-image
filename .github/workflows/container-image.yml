@@ -11,6 +11,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: oceannik/runner-base-image
   IMAGE_TAG: latest
+  OCEANNIK_REPO: oceannik/oceannik
+  OCEANNIK_REPO_TMP_PATH: tmp-oceannik-repo
   DEPLOYMENT_STRATEGIES_REPO: oceannik/deployment-strategies
   BUILD_DEPENDENCIES_BIN_PATH: build-dependencies/bin
   BUILD_DEPENDENCIES_SRC_PATH: build-dependencies/src
@@ -33,12 +35,38 @@ jobs:
       - name: Run make install
         run: make install
 
+      # Get the Ocean binary
+
+      - name: Create the tmp directory for the repo
+        run: mkdir ${{ env.OCEANNIK_REPO_TMP_PATH }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.OCEANNIK_REPO }}
+          ref: main
+          path: ${{ env.OCEANNIK_REPO_TMP_PATH }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Build the ocean binary
+        run: make build-release
+        working-directory: ${{ env.OCEANNIK_REPO_TMP_PATH }}
+
+      - name: Copy the ocean binary to the bin location
+        run: cp ${{ env.OCEANNIK_REPO_TMP_PATH }}/bin/ocean ${{ env.BUILD_DEPENDENCIES_BIN_PATH }}/ocean
+
+      # Get Deployment Strategies
+
       - name: Checkout code for deployment strategies as build dependencies
         uses: actions/checkout@v2
         with:
           repository: ${{ env.DEPLOYMENT_STRATEGIES_REPO }}
           ref: main
-          path: ${{ env.BUILD_DEPENDENCIES_SRC_PATH }}
+          path: ${{ env.BUILD_DEPENDENCIES_SRC_PATH }}/deployment-strategies
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
 
       - name: Build the container image
