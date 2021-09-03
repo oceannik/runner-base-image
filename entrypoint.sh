@@ -6,11 +6,9 @@ MSG_PREFIX="[Oceannik Entrypoint]"
 figlet Oceannik
 
 echo "${MSG_PREFIX} Display package versions"
+
 ansible --version
 ocean version
-
-echo "${MSG_PREFIX} Clone the user's project repository"
-git clone https://github.com/oceannik/examples ${OCEANNIK_USER_PROJECT_DIR}
 
 echo "${MSG_PREFIX} Fetch secrets"
 
@@ -22,10 +20,23 @@ mv ~/.oceannik/certs/oceannik_ca.crt ~/.oceannik/certs/oceannik_ca/oceannik_ca.c
 mv ~/.oceannik/certs/oceannik_runner.crt ~/.oceannik/certs/oceannik_client.crt
 mv ~/.oceannik/certs/oceannik_runner.key ~/.oceannik/certs/oceannik_client.key
 
-ocean secrets pull --host ${HOST:=localhost} --port ${PORT:=5000} --output-dir ${PULLED_SECRETS_DIR}
+ocean secrets pull --host ${OCEAN_HOST:=localhost} --port ${OCEAN_PORT:=5000} --output-dir ${PULLED_SECRETS_DIR}
 
 cp -r ${PULLED_SECRETS_DIR}/INFRA_SSH_PRIVATE_KEY* ~/.ssh/oceannik/
 chmod 600 ~/.ssh/oceannik/INFRA_SSH_PRIVATE_KEY*
+
+if [[ -f "${PULLED_SECRETS_DIR}/GIT_REPO_SSH_PRIVATE_KEY" ]]; then
+    cp "${PULLED_SECRETS_DIR}/GIT_REPO_SSH_PRIVATE_KEY" ~/.ssh/id_rsa
+    chmod 600 ~/.ssh/id_rsa
+fi
+
+echo "${MSG_PREFIX} Clone the user's project repository"
+
+if [[ -z "${OCEANNIK_PROJECT_REPO_BRANCH}" ]]; then
+    git clone "${OCEANNIK_PROJECT_REPO}" -b "${OCEANNIK_PROJECT_REPO_BRANCH}" "${OCEANNIK_USER_PROJECT_DIR}"
+else
+    git clone "${OCEANNIK_PROJECT_REPO}" "${OCEANNIK_USER_PROJECT_DIR}"
+fi
 
 echo "${MSG_PREFIX} Copy inventory"
 
